@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { SafeAreaView, View, Text, StyleSheet, TextInput, Button, TouchableOpacity } from 'react-native';
-import { auth, db } from '../../services/firebaseConfig';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+
+import { auth } from '../../services/firebaseConfig';
 
 export default function Login({changeStatus}) {
   const [email, setEmail] = useState('');
