@@ -1,16 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { SafeAreaView, View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, Keyboard } from 'react-native';
 import Login from './src/components/Login';
 import TaskList from './src/components/TaskList';
+import Feather from 'react-native-vector-icons/Feather';
 
 import { db } from './src/services/firebaseConfig';
-import { set, ref, push, child, onValue, remove } from 'firebase/database';  
+import { set, ref, push, child, onValue, remove, update } from 'firebase/database';
 
 export default function App() {
 
   const [user, setUser] = useState(null);
   const [newTask, setNewTask] = useState('');
+  const inputRef = useRef(null);
   const [tasks, setTasks] = useState([]);
+  const [key, setKey] = useState('');
 
   useEffect(() => {
 
@@ -21,7 +24,7 @@ export default function App() {
 
       const refUser = ref(db, 'tarefas/' + user);
       onValue(refUser, (snapshot) => {
-        
+
         setTasks([]);
 
         snapshot?.forEach((childItem) => {
@@ -44,6 +47,30 @@ export default function App() {
 
   function handleAdd() {
     if (newTask === '') {
+      return;
+    }
+
+    //Usuário quer editar uma tarefa
+    if (key !== '') {
+      update(ref(db, 'tarefas/' + user + '/' + key), {
+        nome: newTask
+      })
+        .then(() => {
+          const taskIndex = tasks.findIndex(item => item.key === key);
+          let taskClone = tasks;
+          taskClone[taskIndex].nome = newTask;
+
+          setTasks([...taskClone]);
+
+        })
+        .catch((error) => {
+          console.log(error.message);
+        })
+
+      Keyboard.dismiss();
+      setNewTask('');
+      setKey('');
+
       return;
     }
 
@@ -71,23 +98,31 @@ export default function App() {
   }
 
   function handleDelete(keyTask) {
-    const deleteTask = ref(db, 'tarefas/'+user+'/'+keyTask);
-    
-    remove(deleteTask)
-    .then(() => {
-      console.log(keyTask)
-      const findTask = tasks.filter(item => item.key !== keyTask)
-      setTasks(findTask);
+    const deleteTask = ref(db, 'tarefas/' + user + '/' + keyTask);
 
-    })
-    .catch((error) => {
-      alert(error.message);
-    });
-    
+    remove(deleteTask)
+      .then(() => {
+        //console.log(keyTask)
+        const findTask = tasks.filter(item => item.key !== keyTask)
+        setTasks(findTask);
+
+      })
+      .catch((error) => {
+        alert(error.message);
+      });
+
   }
 
   function handleEdit(data) {
-    console.log(data);
+    setNewTask(data.nome);
+    setKey(data.key);
+    inputRef.current.focus();
+  }
+
+  function cancelEdit() {
+    setNewTask('');
+    setKey('');
+    Keyboard.dismiss();
   }
 
   if (!user) {
@@ -96,12 +131,26 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.container}>
+
+      {key.length > 0 &&
+
+        <View style={{ flexDirection: 'row', marginBottom: 8 }}>
+          <TouchableOpacity
+            onPress={cancelEdit}
+          >
+            <Feather name="x-circle" size={20} color="#FF0000" />
+          </TouchableOpacity>
+          <Text style={{ marginLeft: 5, color: "#FF0000" }}>Você está editando uma tarefa</Text>
+        </View>
+      }
+
       <View style={styles.containerTask}>
         <TextInput
           style={styles.input}
           placeholder="O que vai fazer hoje?"
           value={newTask}
           onChangeText={(text) => setNewTask(text)}
+          ref={inputRef}
         />
 
         <TouchableOpacity
